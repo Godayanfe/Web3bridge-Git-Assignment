@@ -25,8 +25,8 @@ const DICEBEAR_STYLES = [
   "icons",
   "identicon",
   "pixel-art",
-  "rings",
   "shapes",
+  "rings",
   "thumbs",
 ];
 
@@ -167,86 +167,29 @@ class CardStack {
 
 const stack = new CardStack(canvasEl);
 
-/* -------------------------------------------------------------
-   TODO (Student Task 1)
-   -------------------------------------------------------------
-   Fetch a generated SVG avatar from the Dicebear API.
-
-   Dicebear serves raw SVG markup straight from a URL shaped like:
-
-     https://api.dicebear.com/9.x/<style>/svg?seed=<seed>
-
-   - <style> is one of the strings in DICEBEAR_STYLES above.
-   - <seed> should be the word the player just guessed wrongly, so
-     the same guess always produces the same little creature.
-   - The response body IS the SVG document as plain text — there's
-     no JSON wrapper. Think about which method on the Response
-     object gives you that text.
-
-   Requirements:
-     1. Build the request URL from `style` and `seed`. A guessed
-        word could contain characters that aren't safe to drop into
-        a URL query string as-is — look up how to encode a value
-        for a URL.
-     2. `fetch()` the URL and `await` the response.
-     3. Check `response.ok` before trusting the body. If the
-        request failed, `throw` an Error so the caller can react
-        (see the `catch` block in `handleWrongGuess` below) instead
-        of silently pushing a broken card onto the stack.
-     4. Read the body as text and `return` it.
-
-   This function is `async` and must resolve to a string containing
-   the raw `<svg>...</svg>` markup.
-------------------------------------------------------------- */
 async function fetchAvatarSVG(seed, style) {
-  try {
-    const api = `https://api.dicebear.com/9.x/${style}/svg?seed=${seed}`;
-    const response = await fetch(api);
-    return await response.text();
-  } catch (err) {
-    throw new Error(err);
+  const svgUrl = `https://api.dicebear.com/9.x/${style}/svg?seed=${seed}`
+  const response = await fetch(encodeURI(svgUrl), {
+    method: "GET",
+    headers: {
+      "Content-Type": "image/svg+xml"
+    }
+  })
+  
+  if (!response.ok) {
+    throw new Error("You are not okay!")
   }
-  // throw new Error("fetchAvatarSVG() is not implemented yet");
+
+  return response.text()
 }
-/* -------------------------------------------------------------
-   TODO (Student Task 2)
-   -------------------------------------------------------------
-   Work out how much of the target word to reveal as a hint,
-   given the player's latest wrong guess.
 
-   Rules the game is supposed to follow:
-     - The first wrong guess reveals just the first letter.
-     - Each wrong guess after that reveals at least one more
-       letter than was revealed before.
-     - BUT: if the player's guess shares a longer matching prefix
-       with the target word than what's currently revealed, jump
-       the hint ahead to (that matching prefix + one more letter)
-       instead of only advancing by one.
-       Example: target is "compiler", nothing revealed yet
-       (currentHintLength is 0). Player wrongly guesses "combat".
-       "com" matches the target's first three letters, so the new
-       hint length should be 4 (reveals "comp"), not 1.
-     - The hint length can never exceed the target word's length.
-
-   @param {string} guess               the player's latest wrong guess, lowercase
-   @param {string} target               the secret word, lowercase
-   @param {number} currentHintLength    how many letters are currently revealed
-   @returns {number} the new hint length
-------------------------------------------------------------- */
 function computeHintLength(guess, target, currentHintLength) {
-  guess = guess.toLowerCase();
-  target = target.toLowerCase()
-
-  if (guess === target) {
-    return "";
+  if (currentHintLength === 0) return 1
+  for (let i = 0; i < target.length; i++) {
+    if (guess[i] != target[i]) return i + 1
   }
-  if (guess.slice(0, 3) === target.slice(0, 3)) {
-    return target.slice(0, 4);
-  }
-  return target.slice(0, Math.min(currentHintLength + 1, target.length - 1));;
+  return currentHintLength + 1
 }
-
-
 
 /* -------------------------------------------------------------
    Game state + flow — provided for you
